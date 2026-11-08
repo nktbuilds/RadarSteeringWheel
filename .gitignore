@@ -1,0 +1,26 @@
+# Exported recordings
+xm125-steering-*.json
+recordings/
+
+# Python bridge
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.pytest_cache/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+coverage/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+*.log
+.DS_Store
+Thumbs.db

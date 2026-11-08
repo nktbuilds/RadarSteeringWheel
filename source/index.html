@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XM125 Radar Steering Wheel</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="dot"></span>
+        <h1>XM125 Radar Steering Wheel</h1>
+      </div>
+      <div id="status" class="status" data-kind="idle">Initialising…</div>
+    </header>
+
+    <main class="layout">
+      <div class="top-row">
+        <section class="panel controls">
+          <h2>Connection</h2>
+          <form id="config-form" autocomplete="off">
+            <div class="field">
+              <label for="port-list">Serial port</label>
+              <div class="port-row">
+                <select id="port-list" name="portList">
+                  <option value="">— choose on Connect —</option>
+                </select>
+                <button id="add-port-btn" type="button" class="ghost" title="Grant access to a new serial port">
+                  Add…
+                </button>
+              </div>
+            </div>
+            <p class="hint">
+              Pick a previously authorized port, or click Connect / Add… to choose one.
+              Select the XM125's USB-serial device.
+            </p>
+
+            <div class="field">
+              <label for="baudRate">Baud rate</label>
+              <select id="baudRate" name="baudRate">
+                <option value="115200">115200</option>
+                <option value="256000">256000</option>
+                <option value="460800" selected>460800 (default)</option>
+                <option value="576000">576000</option>
+              </select>
+            </div>
+            <p class="hint">
+              The SparkFun XM125 has no hardware flow control; rates above 460800 can
+              overflow the RX buffer and corrupt the JSON header stream.
+            </p>
+
+            <h2>Radar Settings</h2>
+            <div class="field-grid">
+              <div class="field">
+                <div class="field-label">
+                  <label for="startPoint">Start point</label>
+                  <button type="button" class="help-btn" data-help="startPoint" aria-label="Help: Start point">?</button>
+                </div>
+                <input id="startPoint" name="startPoint" type="number" value="100" min="-275" max="1000" step="1" />
+              </div>
+              <div class="field">
+                <div class="field-label">
+                  <label for="numPoints">Num points</label>
+                  <button type="button" class="help-btn" data-help="numPoints" aria-label="Help: Number of points">?</button>
+                </div>
+                <input id="numPoints" name="numPoints" type="number" value="40" min="1" max="160" step="1" />
+              </div>
+              <div class="field">
+                <div class="field-label">
+                  <label for="stepLength">Step length</label>
+                  <button type="button" class="help-btn" data-help="stepLength" aria-label="Help: Step length">?</button>
+                </div>
+                <input id="stepLength" name="stepLength" type="number" value="8" min="1" max="48" step="1" />
+              </div>
+              <div class="field">
+                <div class="field-label">
+                  <label for="profile">Profile</label>
+                  <button type="button" class="help-btn" data-help="profile" aria-label="Help: Profile">?</button>
+                </div>
+                <input id="profile" name="profile" type="number" value="3" min="1" max="5" step="1" />
+              </div>
+              <div class="field">
+                <div class="field-label">
+                  <label for="hwaas">HWAAS</label>
+                  <button type="button" class="help-btn" data-help="hwaas" aria-label="Help: HWAAS">?</button>
+                </div>
+                <input id="hwaas" name="hwaas" type="number" value="32" min="1" max="511" step="1" />
+              </div>
+              <div class="field">
+                <div class="field-label">
+                  <label for="receiverGain">Receiver gain</label>
+                  <button type="button" class="help-btn" data-help="receiverGain" aria-label="Help: Receiver gain">?</button>
+                </div>
+                <input id="receiverGain" name="receiverGain" type="number" value="16" min="0" max="23" step="1" />
+              </div>
+              <div class="field">
+                <div class="field-label">
+                  <label for="updateRate">Update rate (Hz)</label>
+                  <button type="button" class="help-btn" data-help="updateRate" aria-label="Help: Update rate">?</button>
+                </div>
+                <input id="updateRate" name="updateRate" type="number" value="20" min="1" max="100" step="1" />
+              </div>
+            </div>
+            <p id="range-info" class="range-info"></p>
+            <p class="hint">Step length must divide or be a multiple of 24. ~2.5 mm per step.</p>
+          </form>
+
+          <div class="actions">
+            <button id="connect-btn" class="primary" type="button">Connect</button>
+            <button id="disconnect-btn" type="button" disabled>Disconnect</button>
+            <button id="demo-btn" type="button" class="ghost">Demo</button>
+            <button id="preset-btn" type="button" class="ghost">Hands preset</button>
+            <button id="recenter-btn" type="button" class="ghost">Recenter</button>
+          </div>
+        </section>
+
+        <section class="panel game-panel">
+          <div class="chart-head">
+            <h2>Drive</h2>
+            <span class="chart-note">top view · the wheel steers the car</span>
+          </div>
+          <div class="game-box"><canvas id="game-canvas"></canvas></div>
+        </section>
+
+        <section class="panel steering-panel">
+          <div class="steering-head">
+            <div class="angle-block">
+              <span class="readout-label">Wheel angle</span>
+              <span class="readout-value angle-value"><span id="angle-value">0</span><span class="unit">°</span></span>
+              <div class="readout-sub-row">
+                <span id="lock-cue" class="cue"></span>
+                <span id="direction-info" class="readout-sub">centered</span>
+              </div>
+            </div>
+            <div class="wheel-box"><canvas id="wheel-canvas"></canvas></div>
+          </div>
+          <div class="readout-meta">
+            <div><span class="meta-key">Near hand</span><span id="near-info" class="meta-val">--</span></div>
+            <div><span class="meta-key">Far hand</span><span id="far-info" class="meta-val">--</span></div>
+            <div><span class="meta-key">Peaks (cm/amp)</span><span id="peaks-info" class="meta-val">--</span></div>
+            <div><span class="meta-key">Turn signal</span><span id="signal-info" class="meta-val">--</span></div>
+            <div><span class="meta-key">Mode</span><span id="mode-info" class="meta-val">--</span></div>
+            <div><span class="meta-key">Stream</span><span id="stats" class="meta-val">--</span></div>
+            <div><span class="meta-key">Gamepad</span><span id="pad-info" class="meta-val">off</span></div>
+          </div>
+          <p class="caveat">
+            A turn must move the hands <em>toward or away from</em> the radar. Mount the
+            radar off the wheel's axis and angled so the steering arc has a radial
+            component — see the probe below.
+          </p>
+        </section>
+      </div>
+
+      <section class="panel tuning-panel">
+        <div class="chart-head">
+          <h2>Tuning</h2>
+          <span class="chart-note">adjust live while streaming</span>
+        </div>
+        <div class="tune-grid">
+          <label class="tune-row">
+            <span class="tune-label">Angle gain</span>
+            <input id="tune-gain" type="range" min="0.1" max="20" step="0.1" value="1" />
+            <span id="tune-gain-val" class="tune-val">1.0 °/mm</span>
+          </label>
+          <label class="tune-row">
+            <span class="tune-label">Game steer</span>
+            <input id="tune-steer" type="range" min="0.05" max="1" step="0.05" value="0.45" />
+            <span id="tune-steer-val" class="tune-val">0.45</span>
+          </label>
+          <label class="tune-row">
+            <span class="tune-label">Smoothing</span>
+            <input id="tune-smooth" type="range" min="0" max="1" step="0.01" value="0.12" />
+            <span id="tune-smooth-val" class="tune-val">0.12 s</span>
+          </label>
+          <label class="tune-row">
+            <span class="tune-label">Centering</span>
+            <input id="tune-baseline" type="range" min="1" max="60" step="1" value="20" />
+            <span id="tune-baseline-val" class="tune-val">20 s</span>
+          </label>
+          <label class="tune-row">
+            <span class="tune-label">Peak smoothing</span>
+            <input id="tune-amp" type="range" min="0.05" max="0.9" step="0.05" value="0.3" />
+            <span id="tune-amp-val" class="tune-val">0.30</span>
+          </label>
+          <label class="tune-row">
+            <span class="tune-label">Position response</span>
+            <input id="tune-bin" type="range" min="0.02" max="0.6" step="0.01" value="0.25" />
+            <span id="tune-bin-val" class="tune-val">0.25</span>
+          </label>
+          <label class="tune-row">
+            <span class="tune-label">Bin hysteresis</span>
+            <input id="tune-hys" type="range" min="0" max="0.6" step="0.05" value="0.2" />
+            <span id="tune-hys-val" class="tune-val">0.20</span>
+          </label>
+          <label class="tune-row tune-check">
+            <input id="tune-centroid" type="checkbox" />
+            <span>Centroid position · continuous, no 20 mm steps</span>
+          </label>
+          <label class="tune-row tune-check">
+            <input id="tune-invert" type="checkbox" />
+            <span>Invert direction</span>
+          </label>
+          <label class="tune-row tune-check">
+            <input id="tune-hold" type="checkbox" />
+            <span>Hold turn (absolute) · Recenter to zero</span>
+          </label>
+          <label class="tune-row tune-check">
+            <input id="tune-single" type="checkbox" />
+            <span>Single-hand driving · one peak, radial distance</span>
+          </label>
+          <label class="tune-row tune-check">
+            <input id="tune-pad" type="checkbox" />
+            <span>Virtual gamepad · left stick only</span>
+          </label>
+          <label class="tune-row">
+            <span class="tune-label">Pad bridge</span>
+            <input id="tune-pad-url" type="text" value="ws://127.0.0.1:8765" spellcheck="false" autocomplete="off" />
+            <span id="tune-pad-state" class="tune-val">off</span>
+          </label>
+          <button id="tune-reset" type="button" class="ghost">Reset tuning</button>
+        </div>
+      </section>
+
+      <div class="probe">
+        <section class="panel chart-panel">
+          <div class="chart-head">
+            <h2>Amplitude vs distance</h2>
+            <span class="chart-note">smoothed · what the detector sees</span>
+          </div>
+          <div class="chart-box"><canvas id="amplitude-chart"></canvas></div>
+        </section>
+
+        <section class="panel chart-panel">
+          <div class="chart-head">
+            <h2>Differential displacement</h2>
+            <span class="chart-note">far − near, mm · the turn signal</span>
+          </div>
+          <div class="chart-box"><canvas id="displacement-chart"></canvas></div>
+        </section>
+      </div>
+
+      <section class="panel log-panel">
+        <div class="chart-head">
+          <h2>Console</h2>
+          <div class="rec-controls">
+            <button id="record-btn" type="button" class="ghost">Record</button>
+            <button id="export-btn" type="button" class="ghost" disabled>Export</button>
+            <label class="file-btn" title="Load a recording and replay it">
+              Replay
+              <input id="replay-input" type="file" accept="application/json,.json" hidden />
+            </label>
+          </div>
+        </div>
+        <div id="log" class="log"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      Web Serial requires Chromium (Chrome/Edge) and a secure context (localhost or HTTPS).
+      Serve this folder over HTTP — e.g. <code>python3 -m http.server</code>.
+    </footer>
+
+    <div id="help-popover" class="popover" role="tooltip" hidden></div>
+
+    <script type="module" src="./js/main.js"></script>
+  </body>
+</html>
